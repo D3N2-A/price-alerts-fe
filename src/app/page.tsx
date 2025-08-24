@@ -1,103 +1,103 @@
-'use client'
+"use client";
 
-import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
-import { Database } from '@/types/database'
-import Sidebar from '@/components/layout/Sidebar'
-import MainPanel from '@/components/layout/MainPanel'
+import { useState, useEffect } from "react";
+import { supabase } from "@/lib/supabase";
+import { Database } from "@/types/database";
+import Sidebar from "@/components/layout/Sidebar";
+import MainPanel from "@/components/layout/MainPanel";
 
-type Product = Database['public']['Tables']['products']['Row']
-type PriceHistory = Database['public']['Tables']['price_history']['Row']
+type Product = Database["public"]["Tables"]["products"]["Row"];
+type PriceHistory = Database["public"]["Tables"]["price_history"]["Row"];
 
 interface ProductWithLatestData extends Product {
-  latestData?: PriceHistory
-  loading?: boolean
+  latestData?: PriceHistory;
+  loading?: boolean;
 }
 
 export default function Home() {
-  const [products, setProducts] = useState<ProductWithLatestData[]>([])
-  const [selectedProduct, setSelectedProduct] = useState<string | null>(null)
-  const [priceHistory, setPriceHistory] = useState<PriceHistory[]>([])
-  const [loading, setLoading] = useState(false)
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [products, setProducts] = useState<ProductWithLatestData[]>([]);
+  const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
+  const [priceHistory, setPriceHistory] = useState<PriceHistory[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   // Fetch products and their latest price data
   useEffect(() => {
     async function fetchProducts() {
       const { data: productsData, error } = await supabase
-        .from('products')
-        .select('*')
-        .eq('is_active', true)
-        .eq('is_deleted', false)
-        .order('url')
+        .from("products")
+        .select("*")
+        .eq("is_active", true)
+        .eq("is_deleted", false)
+        .order("url");
 
       if (error) {
-        console.error('Error fetching products:', error)
-        return
+        console.error("Error fetching products:", error);
+        return;
       }
 
-      if (!productsData) return
+      if (!productsData) return;
 
       // Initialize products with loading state
-      const productsWithLoading = productsData.map(product => ({
+      const productsWithLoading = productsData.map((product: Product) => ({
         ...product,
-        loading: true
-      }))
-      setProducts(productsWithLoading)
+        loading: true,
+      }));
+      setProducts(productsWithLoading);
 
       // Fetch latest price data for each product
       const productsWithData = await Promise.all(
-        productsData.map(async (product) => {
+        productsData.map(async (product: Product) => {
           const { data: latestData } = await supabase
-            .from('price_history')
-            .select('*')
-            .eq('product_url', product.url)
-            .order('timestamp', { ascending: false })
+            .from("price_history")
+            .select("*")
+            .eq("product_url", product.url as string)
+            .order("timestamp", { ascending: false })
             .limit(1)
-            .single()
+            .single();
 
           return {
             ...product,
             latestData: latestData || undefined,
-            loading: false
-          }
+            loading: false,
+          };
         })
-      )
+      );
 
-      setProducts(productsWithData)
+      setProducts(productsWithData);
     }
 
-    fetchProducts()
-  }, [])
+    fetchProducts();
+  }, []);
 
   // Fetch price history when product is selected
   useEffect(() => {
     async function fetchPriceHistory() {
       if (!selectedProduct) {
-        setPriceHistory([])
-        return
+        setPriceHistory([]);
+        return;
       }
 
-      setLoading(true)
-      
+      setLoading(true);
+
       const { data, error } = await supabase
-        .from('price_history')
-        .select('*')
-        .eq('product_url', selectedProduct)
-        .order('timestamp', { ascending: false })
-        .limit(100)
+        .from("price_history")
+        .select("*")
+        .eq("product_url", selectedProduct)
+        .order("timestamp", { ascending: false })
+        .limit(100);
 
       if (error) {
-        console.error('Error fetching price history:', error)
+        console.error("Error fetching price history:", error);
       } else {
-        setPriceHistory(data || [])
+        setPriceHistory(data || []);
       }
 
-      setLoading(false)
+      setLoading(false);
     }
 
-    fetchPriceHistory()
-  }, [selectedProduct])
+    fetchPriceHistory();
+  }, [selectedProduct]);
 
   return (
     <div className="h-screen flex">
@@ -114,5 +114,5 @@ export default function Home() {
         loading={loading}
       />
     </div>
-  )
+  );
 }
