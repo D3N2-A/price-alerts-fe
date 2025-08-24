@@ -5,6 +5,8 @@ import { supabase } from "@/lib/supabase";
 import { Database } from "@/types/database";
 import Sidebar from "@/components/layout/Sidebar";
 import MainPanel from "@/components/layout/MainPanel";
+import NotificationSettings from "@/components/ui/NotificationSettings";
+import { notificationManager } from "@/lib/notifications";
 
 type Product = Database["public"]["Tables"]["products"]["Row"];
 type PriceHistory = Database["public"]["Tables"]["price_history"]["Row"];
@@ -20,6 +22,9 @@ export default function Home() {
   const [priceHistory, setPriceHistory] = useState<PriceHistory[]>([]);
   const [loading, setLoading] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
 
   // Fetch products and their latest price data
   useEffect(() => {
@@ -70,6 +75,33 @@ export default function Home() {
     fetchProducts();
   }, []);
 
+  // Initialize notifications
+  useEffect(() => {
+    const initNotifications = async () => {
+      const initialized = await notificationManager.initialize();
+      if (initialized) {
+        const permission = await notificationManager.requestPermission();
+        setNotificationsEnabled(permission === 'granted');
+      }
+    };
+
+    initNotifications();
+  }, []);
+
+  // Handle mobile breakpoint detection
+  useEffect(() => {
+    const checkIsMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+      if (window.innerWidth < 768) {
+        setSidebarCollapsed(true);
+      }
+    };
+
+    checkIsMobile();
+    window.addEventListener('resize', checkIsMobile);
+    return () => window.removeEventListener('resize', checkIsMobile);
+  }, []);
+
   // Fetch price history when product is selected
   useEffect(() => {
     async function fetchPriceHistory() {
@@ -100,18 +132,53 @@ export default function Home() {
   }, [selectedProduct]);
 
   return (
-    <div className="h-screen flex">
+    <div className="min-h-screen flex flex-col md:flex-row">
+      {/* Mobile overlay backdrop */}
+      {isMobile && mobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+
+      {/* Notification settings - Desktop only in top right */}
+      {!isMobile && (
+        <div className="fixed top-4 right-4 z-30">
+          <NotificationSettings 
+            enabled={notificationsEnabled}
+            onToggle={setNotificationsEnabled}
+          />
+        </div>
+      )}
+      
       <Sidebar
         products={products}
         selectedProduct={selectedProduct}
-        onProductSelect={setSelectedProduct}
+        onProductSelect={(url) => {
+          setSelectedProduct(url);
+          if (isMobile) {
+            setMobileMenuOpen(false);
+          }
+        }}
         isCollapsed={sidebarCollapsed}
-        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+        onToggleCollapse={() => {
+          if (isMobile) {
+            setMobileMenuOpen(!mobileMenuOpen);
+          } else {
+            setSidebarCollapsed(!sidebarCollapsed);
+          }
+        }}
+        isMobile={isMobile}
+        mobileMenuOpen={mobileMenuOpen}
       />
       <MainPanel
         selectedProduct={selectedProduct}
         priceHistory={priceHistory}
         loading={loading}
+        isMobile={isMobile}
+        onOpenMobileMenu={() => setMobileMenuOpen(true)}
+        notificationsEnabled={notificationsEnabled}
+        onToggleNotifications={setNotificationsEnabled}
       />
     </div>
   );

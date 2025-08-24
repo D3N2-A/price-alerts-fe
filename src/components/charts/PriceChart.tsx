@@ -1,6 +1,7 @@
 'use client'
 
 import { Database } from '@/types/database'
+import { useState, useEffect } from 'react'
 import {
   LineChart,
   Line,
@@ -18,12 +19,26 @@ interface PriceChartProps {
 }
 
 export default function PriceChart({ data }: PriceChartProps) {
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const checkIsMobile = () => {
+      setIsMobile(window.innerWidth < 640)
+    }
+
+    checkIsMobile()
+    window.addEventListener('resize', checkIsMobile)
+    return () => window.removeEventListener('resize', checkIsMobile)
+  }, [])
+
   // Transform and sort data for chart (oldest to newest)
   const chartData = data
     .slice()
     .reverse()
     .map((entry) => ({
-      timestamp: new Date(entry.timestamp).toLocaleDateString(),
+      timestamp: isMobile 
+        ? new Date(entry.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+        : new Date(entry.timestamp).toLocaleDateString(),
       price: entry.price,
       currency: entry.currency,
       availability: entry.availability,
@@ -54,30 +69,55 @@ export default function PriceChart({ data }: PriceChartProps) {
   }
 
   return (
-    <div className="h-96">
+    <div className="h-64 sm:h-80 md:h-96">
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+        <LineChart 
+          data={chartData} 
+          margin={{ 
+            top: 5, 
+            right: isMobile ? 10 : 30, 
+            left: isMobile ? 10 : 20, 
+            bottom: isMobile ? 40 : 5 
+          }}
+        >
           <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
           <XAxis 
             dataKey="timestamp" 
             stroke="#6b7280"
-            fontSize={12}
+            fontSize={isMobile ? 10 : 12}
             tick={{ fill: '#6b7280' }}
+            interval={isMobile ? 'preserveStartEnd' : 0}
+            angle={isMobile ? -45 : 0}
+            textAnchor={isMobile ? 'end' : 'middle'}
+            height={isMobile ? 60 : 30}
           />
           <YAxis 
             stroke="#6b7280"
-            fontSize={12}
+            fontSize={isMobile ? 10 : 12}
             tick={{ fill: '#6b7280' }}
-            tickFormatter={(value) => `${data[0]?.currency || ''} ${value}`}
+            tickFormatter={(value) => isMobile 
+              ? `${value}` 
+              : `${data[0]?.currency || ''} ${value}`
+            }
+            width={isMobile ? 40 : 60}
           />
           <Tooltip content={<CustomTooltip />} />
           <Line
             type="monotone"
             dataKey="price"
             stroke="#2563eb"
-            strokeWidth={2}
-            dot={{ fill: '#2563eb', strokeWidth: 2, r: 4 }}
-            activeDot={{ r: 6, stroke: '#2563eb', strokeWidth: 2, fill: '#ffffff' }}
+            strokeWidth={isMobile ? 1.5 : 2}
+            dot={{ 
+              fill: '#2563eb', 
+              strokeWidth: isMobile ? 1 : 2, 
+              r: isMobile ? 3 : 4 
+            }}
+            activeDot={{ 
+              r: isMobile ? 5 : 6, 
+              stroke: '#2563eb', 
+              strokeWidth: 2, 
+              fill: '#ffffff' 
+            }}
           />
         </LineChart>
       </ResponsiveContainer>

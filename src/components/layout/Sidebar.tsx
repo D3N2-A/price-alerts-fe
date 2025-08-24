@@ -17,16 +17,24 @@ interface SidebarProps {
   onProductSelect: (productUrl: string) => void
   isCollapsed: boolean
   onToggleCollapse: () => void
+  isMobile?: boolean
+  mobileMenuOpen?: boolean
 }
 
-export default function Sidebar({ products, selectedProduct, onProductSelect, isCollapsed, onToggleCollapse }: SidebarProps) {
+export default function Sidebar({ products, selectedProduct, onProductSelect, isCollapsed, onToggleCollapse, isMobile, mobileMenuOpen }: SidebarProps) {
   return (
-    <div className={`bg-white border-r border-gray-200 transition-all duration-300 ease-in-out ${
-      isCollapsed ? 'w-16' : 'w-80'
-    }`}>
+    <div className={`
+      bg-white border-r border-gray-200 transition-all duration-300 ease-in-out
+      ${isMobile 
+        ? `fixed top-0 left-0 h-full z-50 transform ${
+            mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+          } w-80`
+        : `${isCollapsed ? 'w-16' : 'w-80'}`
+      }
+    `}>
       {/* Header with toggle button */}
       <div className="flex items-center justify-between p-6 border-b border-gray-200">
-        {!isCollapsed && (
+        {(!isCollapsed || isMobile) && (
           <h2 className="text-xl font-semibold text-gray-900 transition-opacity duration-200">
             Products
           </h2>
@@ -34,11 +42,19 @@ export default function Sidebar({ products, selectedProduct, onProductSelect, is
         <button
           onClick={onToggleCollapse}
           className={`p-2 rounded-lg hover:bg-gray-100 transition-colors ${
-            isCollapsed ? 'mx-auto' : ''
+            isCollapsed && !isMobile ? 'mx-auto' : ''
           }`}
-          title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          title={
+            isMobile 
+              ? 'Close menu' 
+              : isCollapsed 
+                ? 'Expand sidebar' 
+                : 'Collapse sidebar'
+          }
         >
-          {isCollapsed ? (
+          {isMobile ? (
+            <ChevronLeft className="h-5 w-5 text-gray-600" />
+          ) : isCollapsed ? (
             <Menu className="h-5 w-5 text-gray-600" />
           ) : (
             <ChevronLeft className="h-5 w-5 text-gray-600" />
@@ -47,7 +63,7 @@ export default function Sidebar({ products, selectedProduct, onProductSelect, is
       </div>
 
       {/* Products list */}
-      <div className={`${isCollapsed ? 'p-2' : 'p-6'} space-y-2`}>
+      <div className={`${isCollapsed && !isMobile ? 'p-2' : 'p-6'} space-y-2`}>
         {products.map((product) => (
           <button
             key={product.url}
@@ -56,10 +72,10 @@ export default function Sidebar({ products, selectedProduct, onProductSelect, is
               selectedProduct === product.url
                 ? 'bg-blue-50 border border-blue-200'
                 : 'hover:bg-gray-50 border border-transparent'
-            } ${isCollapsed ? 'p-2' : 'p-3'}`}
-            title={isCollapsed && product.latestData ? product.latestData.name : undefined}
+            } ${isCollapsed && !isMobile ? 'p-2' : 'p-3'}`}
+            title={isCollapsed && !isMobile && product.latestData ? product.latestData.name : undefined}
           >
-            {isCollapsed ? (
+            {isCollapsed && !isMobile ? (
               // Collapsed view - show only image or first letter
               <div className="flex items-center justify-center">
                 {product.latestData?.main_image_url ? (
@@ -108,7 +124,7 @@ export default function Sidebar({ products, selectedProduct, onProductSelect, is
           </button>
         ))}
       </div>
-      {products.length === 0 && !isCollapsed && (
+      {products.length === 0 && (!isCollapsed || isMobile) && (
         <div className="text-gray-500 text-sm text-center py-8">
           No products found
         </div>
