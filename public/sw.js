@@ -35,15 +35,35 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch event - serve from cache when offline
+// Fetch event - use network-first strategy for dynamic content
 self.addEventListener('fetch', (event) => {
-  event.respondWith(
-    caches.match(event.request)
-      .then((response) => {
-        // Return cached version or fetch from network
-        return response || fetch(event.request);
-      })
-  );
+  // Check if this is a static asset that should be cached
+  const isStaticAsset = urlsToCache.some(url => event.request.url.endsWith(url)) ||
+                       event.request.url.includes('/manifest.json') ||
+                       event.request.url.includes('/_next/static');
+
+  if (isStaticAsset) {
+    // Cache-first for static assets
+    event.respondWith(
+      caches.match(event.request)
+        .then((response) => {
+          return response || fetch(event.request);
+        })
+    );
+  } else {
+    // Network-first for dynamic content (API calls, pages)
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          // If network request succeeds, return it
+          return response;
+        })
+        .catch(() => {
+          // If network fails, try to serve from cache
+          return caches.match(event.request);
+        })
+    );
+  }
 });
 
 // Push notification event

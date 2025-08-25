@@ -2,6 +2,7 @@
 
 import { Database } from '@/types/database'
 import { useState, useEffect } from 'react'
+import moment from 'moment'
 import {
   LineChart,
   Line,
@@ -35,16 +36,29 @@ export default function PriceChart({ data }: PriceChartProps) {
   const chartData = data
     .slice()
     .reverse()
-    .map((entry) => ({
-      timestamp: isMobile 
-        ? new Date(entry.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-        : new Date(entry.timestamp).toLocaleDateString(),
-      price: entry.price,
-      currency: entry.currency,
-      availability: entry.availability,
-      name: entry.name,
-      fullTimestamp: entry.timestamp,
-    }))
+    .map((entry) => {
+      // Create proper Date object from timestamp
+      const date = new Date(entry.timestamp)
+      
+      return {
+        timestamp: isMobile 
+          ? date.toLocaleDateString('en-US', { month: 'short', day: '2-digit' })
+          : date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }),
+        price: entry.price,
+        currency: entry.currency,
+        availability: entry.availability,
+        name: entry.name,
+        fullTimestamp: entry.timestamp,
+        localTime: date.toLocaleString('en-US', { 
+          year: 'numeric',
+          month: 'long', 
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true
+        }),
+      }
+    })
 
   // Custom tooltip component
   const CustomTooltip = ({ active, payload, label }: any) => {
@@ -54,7 +68,7 @@ export default function PriceChart({ data }: PriceChartProps) {
         <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
           <p className="font-medium">{data.name}</p>
           <p className="text-sm text-gray-600">
-            Date: {new Date(data.fullTimestamp).toLocaleString()}
+            Date: {data.localTime}
           </p>
           <p className="text-lg font-semibold text-green-600">
             {data.currency} {data.price.toFixed(2)}
