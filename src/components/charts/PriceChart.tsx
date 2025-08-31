@@ -1,140 +1,200 @@
-'use client'
+"use client";
 
-import { Database } from '@/types/database'
-import { useState, useEffect } from 'react'
-import moment from 'moment'
+import { Database } from "@/types/database";
+import { useState, useEffect } from "react";
 import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
   Tooltip,
-  ResponsiveContainer,
-} from 'recharts'
+  Legend,
+} from "chart.js";
+import { Line } from "react-chartjs-2";
 
-type PriceHistory = Database['public']['Tables']['price_history']['Row']
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend
+);
+
+type PriceHistory = Database["public"]["Tables"]["price_history"]["Row"];
 
 interface PriceChartProps {
-  data: PriceHistory[]
+  data: PriceHistory[];
 }
 
 export default function PriceChart({ data }: PriceChartProps) {
-  const [isMobile, setIsMobile] = useState(false)
+  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
     const checkIsMobile = () => {
-      setIsMobile(window.innerWidth < 640)
-    }
+      setIsMobile(window.innerWidth < 640);
+    };
 
-    checkIsMobile()
-    window.addEventListener('resize', checkIsMobile)
-    return () => window.removeEventListener('resize', checkIsMobile)
-  }, [])
+    checkIsMobile();
+    window.addEventListener("resize", checkIsMobile);
+    return () => window.removeEventListener("resize", checkIsMobile);
+  }, []);
 
   // Transform and sort data for chart (oldest to newest)
-  const chartData = data
+  const transformedData = data
     .slice()
     .reverse()
     .map((entry) => {
-      // Create proper Date object from timestamp
-      const date = new Date(entry.timestamp)
-      
+      const date = new Date(entry.timestamp);
       return {
-        timestamp: isMobile 
-          ? date.toLocaleDateString('en-US', { month: 'short', day: '2-digit' })
-          : date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }),
+        date,
+        timestamp: isMobile
+          ? date.toLocaleDateString("en-US", { month: "short", day: "2-digit" })
+          : date.toLocaleDateString("en-US", {
+              month: "2-digit",
+              day: "2-digit",
+              year: "numeric",
+            }),
         price: entry.price,
         currency: entry.currency,
         availability: entry.availability,
         name: entry.name,
         fullTimestamp: entry.timestamp,
-        localTime: date.toLocaleString('en-US', { 
-          year: 'numeric',
-          month: 'long', 
-          day: '2-digit',
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: true
+        localTime: date.toLocaleString("en-US", {
+          year: "numeric",
+          month: "long",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: true,
         }),
-      }
-    })
+      };
+    });
 
-  // Custom tooltip component
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      const data = payload[0].payload
-      return (
-        <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
-          <p className="font-medium">{data.name}</p>
-          <p className="text-sm text-gray-600">
-            Date: {data.localTime}
-          </p>
-          <p className="text-lg font-semibold text-green-600">
-            {data.currency} {data.price.toFixed(2)}
-          </p>
-          <p className={`text-sm ${data.availability ? 'text-green-600' : 'text-red-600'}`}>
-            {data.availability ? 'Available' : 'Out of Stock'}
-          </p>
-        </div>
-      )
-    }
-    return null
-  }
+  const chartData = {
+    labels: transformedData.map((item) => item.timestamp),
+    datasets: [
+      {
+        label: "Price",
+        data: transformedData.map((item) => item.price),
+        borderColor: "#2563eb",
+        backgroundColor: "rgba(37, 99, 235, 0.1)",
+        borderWidth: isMobile ? 2 : 3,
+        pointBackgroundColor: "#2563eb",
+        pointBorderColor: "#ffffff",
+        pointBorderWidth: isMobile ? 2 : 3,
+        pointRadius: isMobile ? 4 : 5,
+        pointHoverRadius: isMobile ? 6 : 8,
+        tension: 0.3,
+        fill: true,
+      },
+    ],
+  };
+
+  const options: any = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: false,
+      },
+      tooltip: {
+        backgroundColor: "white",
+        titleColor: "#374151",
+        bodyColor: "#374151",
+        borderColor: "#d1d5db",
+        borderWidth: 1,
+        cornerRadius: 8,
+        padding: 12,
+        displayColors: false,
+        callbacks: {
+          title: function (context: any) {
+            const index = context[0].dataIndex;
+            return transformedData[index]?.name || "";
+          },
+          label: function (context: any) {
+            const index = context.dataIndex;
+            const dataPoint = transformedData[index];
+            return [
+              `Date: ${dataPoint?.localTime}`,
+              `${dataPoint?.currency} ${context.parsed.y.toFixed(2)}`,
+              `${dataPoint?.availability ? "Available" : "Out of Stock"}`,
+            ];
+          },
+        },
+      },
+    },
+    scales: {
+      x: {
+        display: true,
+        grid: {
+          color: "#f3f4f6",
+          drawBorder: true,
+        },
+        ticks: {
+          color: "#6b7280",
+          font: {
+            size: isMobile ? 10 : 12,
+          },
+          maxRotation: isMobile ? 45 : 0,
+          minRotation: 0,
+        },
+        border: {
+          color: "#d1d5db",
+          width: 2,
+        },
+      },
+      y: {
+        display: true,
+        position: "left" as const,
+        grid: {
+          color: "#f3f4f6",
+          drawBorder: true,
+        },
+        ticks: {
+          color: "#374151",
+          font: {
+            size: isMobile ? 11 : 14,
+            weight: "bold" as const,
+          },
+          padding: 8,
+          callback: function (value: any) {
+            const currency = data[0]?.currency || "";
+            return isMobile ? `${value}` : `${currency} ${value.toFixed(2)}`;
+          },
+        },
+        border: {
+          color: "#374151",
+          width: 3,
+        },
+        beginAtZero: false,
+        // Enhanced y-axis styling for better visibility
+        afterDataLimits: function (scale: any) {
+          const range = scale.max - scale.min;
+          scale.max = scale.max + range * 0.1;
+          scale.min = scale.min - range * 0.1;
+        },
+      },
+    },
+    elements: {
+      point: {
+        hoverBackgroundColor: "#ffffff",
+        hoverBorderColor: "#2563eb",
+        hoverBorderWidth: 3,
+      },
+    },
+    interaction: {
+      intersect: false,
+      mode: "index" as const,
+    },
+  };
 
   return (
-    <div className="h-64 sm:h-80 md:h-96">
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart 
-          data={chartData} 
-          margin={{ 
-            top: 5, 
-            right: isMobile ? 10 : 30, 
-            left: isMobile ? 10 : 20, 
-            bottom: isMobile ? 40 : 5 
-          }}
-        >
-          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-          <XAxis 
-            dataKey="timestamp" 
-            stroke="#6b7280"
-            fontSize={isMobile ? 10 : 12}
-            tick={{ fill: '#6b7280' }}
-            interval={isMobile ? 'preserveStartEnd' : 0}
-            angle={isMobile ? -45 : 0}
-            textAnchor={isMobile ? 'end' : 'middle'}
-            height={isMobile ? 60 : 30}
-          />
-          <YAxis 
-            stroke="#6b7280"
-            fontSize={isMobile ? 10 : 12}
-            tick={{ fill: '#6b7280' }}
-            tickFormatter={(value) => isMobile 
-              ? `${value}` 
-              : `${data[0]?.currency || ''} ${value}`
-            }
-            width={isMobile ? 40 : 60}
-          />
-          <Tooltip content={<CustomTooltip />} />
-          <Line
-            type="monotone"
-            dataKey="price"
-            stroke="#2563eb"
-            strokeWidth={isMobile ? 1.5 : 2}
-            dot={{ 
-              fill: '#2563eb', 
-              strokeWidth: isMobile ? 1 : 2, 
-              r: isMobile ? 3 : 4 
-            }}
-            activeDot={{ 
-              r: isMobile ? 5 : 6, 
-              stroke: '#2563eb', 
-              strokeWidth: 2, 
-              fill: '#ffffff' 
-            }}
-          />
-        </LineChart>
-      </ResponsiveContainer>
+    <div className="h-64 sm:h-80 md:h-96 p-2">
+      <Line data={chartData} options={options} />
     </div>
-  )
+  );
 }
